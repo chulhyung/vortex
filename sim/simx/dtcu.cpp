@@ -734,7 +734,7 @@ void Dtcu::execute_mma(uint32_t buf_idx) {
 
         for (uint32_t z = 0; z < cfg::tcK; ++z) {
           a_words[z].u32 = shm_a_[buf_idx][m * DTCU_TILE_K_WORDS + kw + z];
-          b_words[z].u32 = shm_b_[buf_idx][(kw + z) * tile_n_ + n];
+          b_words[z].u32 = shm_b_[buf_idx][(kw + z) * DTCU_TILE_N_MAX + n]; // fixed physical row stride
         }
 
         acc_bit = fedp(a_words.data(), b_words.data(), acc_bit);

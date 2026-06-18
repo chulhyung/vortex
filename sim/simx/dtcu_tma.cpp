@@ -234,7 +234,9 @@ void DtcuTma::load_operands_into(uint32_t buf_idx, uint32_t k_idx) {
     }
   }
 
-  // Load B Buffer (col_major)
+  // Load B Buffer (col_major). Physical row stride is fixed at DTCU_TILE_N_MAX so the
+  // SRAM layout (and its bank distribution) is independent of tile_n_; a smaller tile
+  // uses only the first tile_n columns of each physical row.
   uint64_t baseB = calculate_base_B_(k_idx);
   auto& b_buf = dtcu_.shm_b_[buf_idx];
   for (uint32_t kw = 0; kw < DTCU_TILE_K_WORDS; ++kw) {
@@ -242,7 +244,7 @@ void DtcuTma::load_operands_into(uint32_t buf_idx, uint32_t k_idx) {
       uint64_t addr = baseB + (uint64_t(kw) * elems_per_word + uint64_t(n) * desc.ldmB) * in_sz;
       uint32_t word = 0;
       ram_->read(&word, addr, 4);
-      b_buf[kw * tile_n + n] = word;
+      b_buf[kw * DTCU_TILE_N_MAX + n] = word;
     }
   }
 }
