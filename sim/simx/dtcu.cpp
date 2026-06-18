@@ -51,8 +51,8 @@ Dtcu::Dtcu(const SimContext& ctx,
   , done_(false)
   , desc_addr_(0)
   , desc_{}
-  , a_buf_()
-  , b_buf_()
+  , shm_a_()
+  , shm_b_()
   , accum_buf_()
   , tile_m_(0)
   , tile_n_(0)
@@ -85,10 +85,10 @@ void Dtcu::reset() {
   desc_addr_ = 0;
   std::memset(&desc_, 0, sizeof(desc_));
   tma_->reset();
-  a_buf_[0].clear();
-  a_buf_[1].clear();
-  b_buf_[0].clear();
-  b_buf_[1].clear();
+  shm_a_[0].clear();
+  shm_a_[1].clear();
+  shm_b_[0].clear();
+  shm_b_[1].clear();
   compute_buf_ = 0;
   buf_ready_[0] = false;
   buf_ready_[1] = false;
@@ -128,10 +128,10 @@ void Dtcu::start(uint64_t desc_addr) {
   desc_addr_ = desc_addr;
   state_ = State::DESC_REQ;
   tma_->reset();
-  a_buf_[0].clear();
-  a_buf_[1].clear();
-  b_buf_[0].clear();
-  b_buf_[1].clear();
+  shm_a_[0].clear();
+  shm_a_[1].clear();
+  shm_b_[0].clear();
+  shm_b_[1].clear();
   compute_buf_ = 0;
   buf_ready_[0] = false;
   buf_ready_[1] = false;
@@ -221,10 +221,10 @@ void Dtcu::init_tile_state_() {
   }
 
   // Initialize internal buffers based on tile sizes
-  a_buf_[0].assign(tile_m_ * 8, 0);
-  a_buf_[1].assign(tile_m_ * 8, 0);
-  b_buf_[0].assign(8 * tile_n_, 0);
-  b_buf_[1].assign(8 * tile_n_, 0);
+  shm_a_[0].assign(tile_m_ * 8, 0);
+  shm_a_[1].assign(tile_m_ * 8, 0);
+  shm_b_[0].assign(8 * tile_n_, 0);
+  shm_b_[1].assign(8 * tile_n_, 0);
   accum_buf_[0].assign(tile_m_ * tile_n_, 0.0f);
   accum_buf_[1].assign(tile_m_ * tile_n_, 0.0f);
 
@@ -730,8 +730,8 @@ void Dtcu::execute_mma(uint32_t buf_idx) {
         std::array<reg_data_t, cfg::tcK> b_words{};
 
         for (uint32_t z = 0; z < cfg::tcK; ++z) {
-          a_words[z].u32 = a_buf_[buf_idx][m * DTCU_TILE_K_WORDS + kw + z];
-          b_words[z].u32 = b_buf_[buf_idx][(kw + z) * tile_n_ + n];
+          a_words[z].u32 = shm_a_[buf_idx][m * DTCU_TILE_K_WORDS + kw + z];
+          b_words[z].u32 = shm_b_[buf_idx][(kw + z) * tile_n_ + n];
         }
 
         acc_bit = fedp(a_words.data(), b_words.data(), acc_bit);

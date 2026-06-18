@@ -105,10 +105,11 @@ private:
   uint64_t  desc_addr_;
   Desc      desc_;
 
-  // Internal operand buffers A/B and accumulator C, all double-buffered (ping-pong).
-  // (in element units, not bytes)
-  std::array<std::vector<uint32_t>, 2> a_buf_;
-  std::array<std::vector<uint32_t>, 2> b_buf_;
+  // Operand shared memory A/B (shm_a_/shm_b_) — will be banked + (later) SIMT-shared
+  // for fusion; currently private to the DTCU. Accumulator C stays a private
+  // accumulator memory. All double-buffered (ping-pong). (element units, not bytes)
+  std::array<std::vector<uint32_t>, 2> shm_a_;
+  std::array<std::vector<uint32_t>, 2> shm_b_;
   std::array<std::vector<float>, 2> accum_buf_;
   uint32_t accum_compute_idx_ = 0; // accumulator buffer the current output tile computes into
 

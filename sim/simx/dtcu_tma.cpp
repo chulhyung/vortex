@@ -224,7 +224,7 @@ void DtcuTma::load_operands_into(uint32_t buf_idx, uint32_t k_idx) {
 
   // Load A Buffer (row_major), same mapping as kernel/include/vx_tensor.h
   uint64_t baseA = calculate_base_A_(k_idx);
-  auto& a_buf = dtcu_.a_buf_[buf_idx];
+  auto& a_buf = dtcu_.shm_a_[buf_idx];
   for (uint32_t m = 0; m < tile_m; ++m) {
     for (uint32_t kw = 0; kw < DTCU_TILE_K_WORDS; ++kw) {
       uint64_t addr = baseA + (uint64_t(m) * desc.ldmA + uint64_t(kw) * elems_per_word) * in_sz;
@@ -236,7 +236,7 @@ void DtcuTma::load_operands_into(uint32_t buf_idx, uint32_t k_idx) {
 
   // Load B Buffer (col_major)
   uint64_t baseB = calculate_base_B_(k_idx);
-  auto& b_buf = dtcu_.b_buf_[buf_idx];
+  auto& b_buf = dtcu_.shm_b_[buf_idx];
   for (uint32_t kw = 0; kw < DTCU_TILE_K_WORDS; ++kw) {
     for (uint32_t n = 0; n < tile_n; ++n) {
       uint64_t addr = baseB + (uint64_t(kw) * elems_per_word + uint64_t(n) * desc.ldmB) * in_sz;
