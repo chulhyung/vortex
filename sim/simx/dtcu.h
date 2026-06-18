@@ -129,6 +129,7 @@ private:
   uint64_t tma_addrgen_cycles_ = 0;         // cycles in AGU address-generation setup
   uint64_t tma_store_wait_cycles_ = 0;      // cycles output store stalled (port taken by load / waiting responses)
   uint64_t dtcu_store_drain_cycles_ = 0;    // cycles the final tile's store was NOT hidden (drained after compute)
+  uint64_t dtcu_operand_read_cycles_ = 0;   // cycles to read operands from the banked SRAM (M2 reuse; conflict-sensitive)
 
   uint32_t tile_m_ = 0; // M dimension of native tile (=64)
   uint32_t tile_n_ = 0; // N dimension of native tile (multiple of 16, up to 128)
@@ -149,7 +150,9 @@ private:
 
   // Execute latency modelling
   uint32_t exec_cycles_left_ = 0;
-  uint32_t estimate_execute_cycles_() const;
+  uint32_t estimate_execute_cycles_(); // non-const: accumulates dtcu_operand_read_cycles_
+  uint32_t operand_read_cycles_() const; // banked operand-SRAM read cycles for one K tile (M2)
+  uint32_t bank_of_(uint32_t phys_word) const; // operand-SRAM bank of a physical word index
 
   void init_tile_state_();
   bool advance_output_tile_();

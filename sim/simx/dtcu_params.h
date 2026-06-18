@@ -75,3 +75,12 @@
 #ifndef DTCU_TILE_N_MAX
 #define DTCU_TILE_N_MAX 128
 #endif
+
+// Operand SRAM bank count. The A/B operands share one banked SRAM; a bank delivers
+// 1 word/cycle (the Vortex MemCrossBar rule), so a K-word operand vector takes
+// (max words landing on one bank) cycles -- conflict-free = 1. Must be a power of two.
+// Sweep parameter (RTL/FPGA pins the real value); banking matters only when the
+// operand read becomes the bound (wider array / fewer banks).
+#ifndef DTCU_SMEM_BANKS
+#define DTCU_SMEM_BANKS 8
+#endif

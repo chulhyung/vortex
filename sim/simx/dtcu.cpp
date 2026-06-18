@@ -101,6 +101,7 @@ void Dtcu::reset() {
   tma_addrgen_cycles_ = 0;
   tma_store_wait_cycles_ = 0;
   dtcu_store_drain_cycles_ = 0;
+  dtcu_operand_read_cycles_ = 0;
   accum_buf_[0].clear();
   accum_buf_[1].clear();
   accum_compute_idx_ = 0;
@@ -144,6 +145,7 @@ void Dtcu::start(uint64_t desc_addr) {
   tma_addrgen_cycles_ = 0;
   tma_store_wait_cycles_ = 0;
   dtcu_store_drain_cycles_ = 0;
+  dtcu_operand_read_cycles_ = 0;
   accum_buf_[0].clear();
   accum_buf_[1].clear();
   accum_compute_idx_ = 0;
@@ -259,20 +261,59 @@ bool Dtcu::advance_output_tile_() {
   return false;
 }
 
-uint32_t Dtcu::estimate_execute_cycles_() const {
-  // Compute-phase latency for one K tile. Two parts:
-  //  (1) MAC throughput: fixed array of DTCU_MACS_PER_CYCLE MAC/cycle over the
-  //      tile_m*tile_n*tile_k MACs of the native tile.
-  //  (2) Accumulator read-modify-write: each K tile reads the partial sums and
-  //      writes the updated sums = 2*tile_m*tile_n words. The accumulator is the
-  //      same kind of on-die SRAM as the operand buffers, so it uses the SAME
-  //      bandwidth/latency (DTCU_BUF_BW / DTCU_BUF_LATENCY).
-  // The functional execute_mma() loop stays sequential; this only models timing.
+// Bank of a physical word index in the unified operand SRAM (A region then B region).
+// Vortex MemCrossBar word-granular interleave: bank = word & (banks-1). Step 2 layers
+// an XOR swizzle on top to spread the strided B-column read.
+uint32_t Dtcu::bank_of_(uint32_t phys_word) const {
+  return phys_word & (DTCU_SMEM_BANKS - 1);
+}
+
+// Operand-SRAM read cycles for one K tile, M2 (reuse-aware): the array reads each
+// A-row once and each B-col once. A bank serves 1 word/cycle (MemCrossBar rule), so a
+// K-word operand vector takes (max words landing on one bank) cycles -- conflict-free
+// = 1. A is stride-1 (spreads across banks); B is stride DTCU_TILE_N_MAX (column read,
+// the conflict site). This is the deterministic delivery time the crossbar would
+// produce for this static read set (computed directly, same bank rule).
+uint32_t Dtcu::operand_read_cycles_() const {
+  const uint32_t Kw     = DTCU_TILE_K_WORDS;
+  const uint32_t A_SIZE = DTCU_TILE_M * DTCU_TILE_K_WORDS; // A region size (B starts here)
+  std::array<uint16_t, 64> hist{};
+  uint32_t total = 0;
+  // A-rows: physical word = m*Kw + kw (stride 1)
+  for (uint32_t m = 0; m < tile_m_; ++m) {
+    hist.fill(0);
+    uint32_t mx = 0;
+    for (uint32_t kw = 0; kw < Kw; ++kw)
+      mx = std::max(mx, uint32_t(++hist[bank_of_(m * Kw + kw)]));
+    total += mx;
+  }
+  // B-cols: physical word = A_SIZE + kw*DTCU_TILE_N_MAX + n (stride DTCU_TILE_N_MAX)
+  for (uint32_t n = 0; n < tile_n_; ++n) {
+    hist.fill(0);
+    uint32_t mx = 0;
+    for (uint32_t kw = 0; kw < Kw; ++kw)
+      mx = std::max(mx, uint32_t(++hist[bank_of_(A_SIZE + kw * DTCU_TILE_N_MAX + n)]));
+    total += mx;
+  }
+  return total;
+}
+
+uint32_t Dtcu::estimate_execute_cycles_() {
+  // Compute-phase latency for one K tile. Consumption-driven: the array runs at the
+  // slower of (1) MAC throughput and (2) operand-read delivery from the banked SRAM,
+  // plus (3) accumulator read-modify-write.
+  //  (1) MAC: fixed DTCU_MACS_PER_CYCLE MAC/cycle over tile_m*tile_n*tile_k MACs.
+  //  (2) operand read: operand_read_cycles_() — banked, bank-conflict-sensitive (M2).
+  //  (3) accumulator R/W: 2*tile_m*tile_n words at the buffer SRAM rate.
+  // The functional execute_mma() stays the value oracle; this only models timing.
   const uint64_t tile_macs    = uint64_t(tile_m_) * tile_n_ * tile_k_;
   const uint64_t mac_cycles   = (tile_macs + DTCU_MACS_PER_CYCLE - 1) / DTCU_MACS_PER_CYCLE;
+  const uint32_t read_cycles  = operand_read_cycles_();
   const uint64_t accum_words  = 2ull * tile_m_ * tile_n_; // read partial + write updated
   const uint64_t accum_cycles = (accum_words + DTCU_BUF_BW - 1) / DTCU_BUF_BW + DTCU_BUF_LATENCY;
-  return std::max(1u, uint32_t(mac_cycles + accum_cycles + DTCU_COMPUTE_LATENCY));
+  dtcu_operand_read_cycles_ += read_cycles; // report (swizzle on/off comparison)
+  const uint64_t compute = std::max<uint64_t>(mac_cycles, read_cycles) + accum_cycles + DTCU_COMPUTE_LATENCY;
+  return std::max(1u, uint32_t(compute));
 }
 
 
@@ -882,6 +923,7 @@ void Dtcu::tick() {
                 << ", tma_addrgen=" << tma_addrgen_cycles_
                 << ", tma_store_wait=" << tma_store_wait_cycles_
                 << ", store_drain=" << dtcu_store_drain_cycles_
+                << ", operand_read=" << dtcu_operand_read_cycles_
                 << std::endl;
 
       done_ = true;
