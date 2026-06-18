@@ -64,3 +64,14 @@
 #ifndef DTCU_MAX_OUTSTANDING
 #define DTCU_MAX_OUTSTANDING L2_MSHR_SIZE
 #endif
+
+// Native-tile geometry bounds. The operand/accumulator SRAM is a FIXED-size physical
+// buffer sized for the largest legal tile (like Hopper's fixed-capacity SMEM); a
+// smaller tile (tile_n_ < DTCU_TILE_N_MAX) uses only the leading prefix. tile_m is
+// fixed; tile_n is descriptor-driven (shape_n_size*16) up to DTCU_TILE_N_MAX.
+#ifndef DTCU_TILE_M
+#define DTCU_TILE_M 64
+#endif
+#ifndef DTCU_TILE_N_MAX
+#define DTCU_TILE_N_MAX 128
+#endif

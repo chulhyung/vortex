@@ -220,13 +220,16 @@ void Dtcu::init_tile_state_() {
     std::abort();
   }
 
-  // Initialize internal buffers based on tile sizes
-  shm_a_[0].assign(tile_m_ * 8, 0);
-  shm_a_[1].assign(tile_m_ * 8, 0);
-  shm_b_[0].assign(8 * tile_n_, 0);
-  shm_b_[1].assign(8 * tile_n_, 0);
-  accum_buf_[0].assign(tile_m_ * tile_n_, 0.0f);
-  accum_buf_[1].assign(tile_m_ * tile_n_, 0.0f);
+  // Fixed-size SRAM buffers, sized for the largest legal tile (Hopper-style fixed
+  // SMEM capacity); a smaller tile_n_ uses only the leading prefix. Sizing is
+  // independent of the descriptor so the physical buffer (and later its banks) is a
+  // constant, not resized per GEMM. Compute still indexes with tile_m_/tile_n_.
+  shm_a_[0].assign(DTCU_TILE_M * DTCU_TILE_K_WORDS, 0);
+  shm_a_[1].assign(DTCU_TILE_M * DTCU_TILE_K_WORDS, 0);
+  shm_b_[0].assign(DTCU_TILE_K_WORDS * DTCU_TILE_N_MAX, 0);
+  shm_b_[1].assign(DTCU_TILE_K_WORDS * DTCU_TILE_N_MAX, 0);
+  accum_buf_[0].assign(DTCU_TILE_M * DTCU_TILE_N_MAX, 0.0f);
+  accum_buf_[1].assign(DTCU_TILE_M * DTCU_TILE_N_MAX, 0.0f);
 
   // Calculate # of tiles required to cover the entire GEMM
   tiles_m_ = desc_.M / tile_m_;
