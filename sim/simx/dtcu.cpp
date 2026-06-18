@@ -261,10 +261,19 @@ bool Dtcu::advance_output_tile_() {
   return false;
 }
 
+namespace { constexpr uint32_t ct_log2(uint32_t x) { return x <= 1 ? 0 : 1 + ct_log2(x >> 1); } }
+
 // Bank of a physical word index in the unified operand SRAM (A region then B region).
-// Vortex MemCrossBar word-granular interleave: bank = word & (banks-1). Step 2 layers
-// an XOR swizzle on top to spread the strided B-column read.
+// Vortex MemCrossBar word-granular interleave: bank = word & (banks-1).
+// With DTCU_SWIZZLE, XOR-permute the bank select by folding in the high bits (the
+// row/K index, which for a B column lives above log2(DTCU_TILE_N_MAX)). A column read
+// (stride DTCU_TILE_N_MAX) then maps to distinct banks instead of aliasing to one --
+// the Hopper-TMA swizzle. Same map at fill+read in HW, so functional values are
+// unchanged; here it only changes the timing bank distribution.
 uint32_t Dtcu::bank_of_(uint32_t phys_word) const {
+#if DTCU_SWIZZLE
+  phys_word ^= (phys_word >> ct_log2(DTCU_TILE_N_MAX));
+#endif
   return phys_word & (DTCU_SMEM_BANKS - 1);
 }
 

@@ -84,3 +84,12 @@
 #ifndef DTCU_SMEM_BANKS
 #define DTCU_SMEM_BANKS 8
 #endif
+
+// Operand-SRAM swizzle toggle. 0 = naive interleave (a B column, stride DTCU_TILE_N_MAX,
+// aliases to one bank -> conflict). 1 = XOR-permute the bank select (fold the high
+// row/K bits in) so the column spreads across banks -- the Hopper-TMA swizzle idea.
+// Applied identically at fill+read in HW (functional values unchanged); in this timing
+// model it only changes the bank distribution. Rebuild with -DDTCU_SWIZZLE=1 to compare.
+#ifndef DTCU_SWIZZLE
+#define DTCU_SWIZZLE 0
+#endif
