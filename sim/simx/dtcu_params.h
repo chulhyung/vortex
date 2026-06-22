@@ -34,8 +34,8 @@
 #define DTCU_COMPUTE_LATENCY 6
 #endif
 
-// Operand/accumulator buffer (scratchpad SRAM) model. Defaults borrow the in-core
-// L1 dcache numbers (per postdoc suggestion):
+// Operand-buffer fill (TMA write into the operand SRAM) model. Defaults borrow the
+// in-core L1 dcache numbers (per postdoc suggestion):
 //   DTCU_BUF_LATENCY = L1 dcache pipeline latency (1 cycle, sim/simx/socket.cpp).
 //   DTCU_BUF_BW      = L1 dcache delivered 32-bit words/cycle
 //                      = DCACHE_NUM_BANKS x (DCACHE_WORD_SIZE / 4)  (constants.h).
@@ -46,6 +46,21 @@
 #endif
 #ifndef DTCU_BUF_BW
 #define DTCU_BUF_BW (DCACHE_NUM_BANKS * (DCACHE_WORD_SIZE / 4u))
+#endif
+
+// Accumulator SRAM model -- a SEPARATE physical SRAM from the operand scratchpad
+// (mirrors Gemmini's distinct sp_* vs acc_* params and Virgo's spad-in-SHM vs private
+// accumulator; Hopper keeps the accumulator in registers). It is matrix-unit-private
+// and accessed as a sequential read-modify-write (accum[m*tile_n + n]), so -- unlike
+// the operand B-column read -- it has NO bank-stride conflict: a plain BW model, no
+// swizzle. DTCU_ACC_BANKS = fp32 words/cycle (conflict-free, so banks == delivered BW).
+// Defaults equal the old shared BUF_* values, so cycles are unchanged; now an
+// independent knob to sweep separately from the operand SRAM.
+#ifndef DTCU_ACC_BANKS
+#define DTCU_ACC_BANKS DTCU_BUF_BW
+#endif
+#ifndef DTCU_ACC_LATENCY
+#define DTCU_ACC_LATENCY DTCU_BUF_LATENCY
 #endif
 
 // Address-generation (AGU) setup latency per cache-line-list build. Software (the

@@ -313,13 +313,14 @@ uint32_t Dtcu::estimate_execute_cycles_() {
   // plus (3) accumulator read-modify-write.
   //  (1) MAC: fixed DTCU_MACS_PER_CYCLE MAC/cycle over tile_m*tile_n*tile_k MACs.
   //  (2) operand read: operand_read_cycles_() — banked, bank-conflict-sensitive (M2).
-  //  (3) accumulator R/W: 2*tile_m*tile_n words at the buffer SRAM rate.
+  //  (3) accumulator R/W: 2*tile_m*tile_n words at the accumulator SRAM rate
+  //      (DTCU_ACC_BANKS) -- a separate SRAM from the operand scratchpad, no conflict.
   // The functional execute_mma() stays the value oracle; this only models timing.
   const uint64_t tile_macs    = uint64_t(tile_m_) * tile_n_ * tile_k_;
   const uint64_t mac_cycles   = (tile_macs + DTCU_MACS_PER_CYCLE - 1) / DTCU_MACS_PER_CYCLE;
   const uint32_t read_cycles  = operand_read_cycles_();
   const uint64_t accum_words  = 2ull * tile_m_ * tile_n_; // read partial + write updated
-  const uint64_t accum_cycles = (accum_words + DTCU_BUF_BW - 1) / DTCU_BUF_BW + DTCU_BUF_LATENCY;
+  const uint64_t accum_cycles = (accum_words + DTCU_ACC_BANKS - 1) / DTCU_ACC_BANKS + DTCU_ACC_LATENCY;
   dtcu_operand_read_cycles_ += read_cycles; // report (swizzle on/off comparison)
   const uint64_t compute = std::max<uint64_t>(mac_cycles, read_cycles) + accum_cycles + DTCU_COMPUTE_LATENCY;
   return std::max(1u, uint32_t(compute));
