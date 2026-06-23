@@ -119,10 +119,14 @@ public:
 	void tick() override;
 };
 
+#endif
+
+#ifdef DTCU_ENABLE
+
 class DtcuControlUnit : public FuncUnit {
 public:
 	DtcuControlUnit(const SimContext& ctx, const char* name, Core*);
-	
+
 	void tick() override;
 };
 

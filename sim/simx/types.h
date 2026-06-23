@@ -156,8 +156,10 @@ enum class FUType {
   VPU,
 #endif
 #ifdef EXT_TCU_ENABLE
-  DTCU_Control,
   TCU,
+#endif
+#ifdef DTCU_ENABLE
+  DTCU_Control,
 #endif
   Count
 };
@@ -172,8 +174,10 @@ inline std::ostream &operator<<(std::ostream &os, const FUType& type) {
   case FUType::VPU: os << "VPU"; break;
 #endif
 #ifdef EXT_TCU_ENABLE
-  case FUType::DTCU_Control: os << "DTCU_Control"; break;
   case FUType::TCU: os << "TCU"; break;
+#endif
+#ifdef DTCU_ENABLE
+  case FUType::DTCU_Control: os << "DTCU_Control"; break;
 #endif
   default:
     assert(false);

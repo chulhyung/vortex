@@ -1567,6 +1567,7 @@ instr_trace_t* Emulator::execute(const Instr &instr, uint32_t wid) {
         core_->tensor_unit()->wmma(wid, tpuArgs.fmt_s, tpuArgs.fmt_d, tpuArgs.step_m, tpuArgs.step_n, rs1_data, rs2_data, rs3_data, rd_data, trace_data.get());
         rd_write = true;
       } break;
+    #ifdef DTCU_ENABLE
       case TcuType::DTENSOR_START: { // Disaggregated tensor core command
         //rs1 holds descriptor address
         auto cluster = core_->socket()->cluster();
@@ -1587,6 +1588,7 @@ instr_trace_t* Emulator::execute(const Instr &instr, uint32_t wid) {
         }
         rd_write = true;
       } break;
+    #endif // DTCU_ENABLE
       default:
         std::abort();
       }

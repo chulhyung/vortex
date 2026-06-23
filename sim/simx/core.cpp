@@ -166,6 +166,8 @@ Core::Core(const SimContext& ctx,
 #endif
 #ifdef EXT_TCU_ENABLE
   dispatchers_.at((int)FUType::TCU) = SimPlatform::instance().create_object<Dispatcher>(name, this, 2, NUM_TCU_BLOCKS, NUM_TCU_LANES);
+#endif
+#ifdef DTCU_ENABLE
   dispatchers_.at((int)FUType::DTCU_Control) = SimPlatform::instance().create_object<Dispatcher>(name, this, 2, 1, 1);
 #endif
 
@@ -185,6 +187,8 @@ Core::Core(const SimContext& ctx,
 #ifdef EXT_TCU_ENABLE
   snprintf(sname, 100, "%s-tcu", name);
   func_units_.at((int)FUType::TCU) = SimPlatform::instance().create_object<TcuUnit>(sname, this);
+#endif
+#ifdef DTCU_ENABLE
   snprintf(sname, 100, "%s-dtcu_ctrl", name);
   func_units_.at((int)FUType::DTCU_Control) = SimPlatform::instance().create_object<DtcuControlUnit>(sname, this);
 #endif
@@ -429,6 +433,8 @@ void Core::execute() {
         case FUType::SFU: ++perf_stats_.sfu_stalls; break;
       #ifdef EXT_TCU_ENABLE
         case FUType::TCU: ++perf_stats_.tcu_stalls; break;
+      #endif
+      #ifdef DTCU_ENABLE
         case FUType::DTCU_Control: break; // control-only; no separate stall bucket
       #endif
       #ifdef EXT_V_ENABLE
@@ -468,6 +474,8 @@ void Core::commit() {
       case FUType::SFU: ++perf_stats_.sfu_instrs; break;
     #ifdef EXT_TCU_ENABLE
       case FUType::TCU: ++perf_stats_.tcu_instrs; break;
+    #endif
+    #ifdef DTCU_ENABLE
       case FUType::DTCU_Control: break; // counted in total instrs; no separate bucket
     #endif
     #ifdef EXT_V_ENABLE

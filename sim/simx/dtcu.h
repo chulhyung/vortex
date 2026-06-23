@@ -78,6 +78,29 @@ public:
 
   void tick();
 
+  // Perf counters surfaced to MPM CSRs (cluster-level engine; see claude_doc/DTCU Perf Stat).
+  // op_reqs/out_reqs are coalesced L2 cache-line counts (same unit as core L2/memory req counters);
+  // the rest are cycles.
+  struct PerfStats {
+    uint64_t op_reqs;     // TMA operand (A/B/C) L2 cache-line requests
+    uint64_t out_reqs;    // TMA output (D) L2 cache-line requests
+    uint64_t compute;     // MMA compute cycles
+    uint64_t wait_tma;    // compute stalled waiting for next operand tile (memory-bound headline)
+    uint64_t mem_wait;    // prefetch waited on memory responses
+    uint64_t wait_buf;    // prefetch idle (no free buffer)
+    uint64_t buf_write;   // buffer (SRAM) fill cycles
+    uint64_t addrgen;     // AGU address-gen setup cycles
+    uint64_t store_wait;  // output store stalled cycles
+    uint64_t store_drain; // final store drain (unhidden) cycles
+    uint64_t opread;      // banked operand-SRAM read cycles
+  };
+  PerfStats perf_stats() const {
+    return PerfStats{ total_op_reqs_, total_out_reqs_, dtcu_compute_cycles_,
+      dtcu_wait_for_tma_cycles_, tma_mem_wait_cycles_, tma_wait_for_buffer_cycles_,
+      tma_buffer_write_cycles_, tma_addrgen_cycles_, tma_store_wait_cycles_,
+      dtcu_store_drain_cycles_, dtcu_operand_read_cycles_ };
+  }
+
 private:
   friend class DtcuTma; // TMA engine reaches scratchpad/geometry/counters via a Dtcu&
 

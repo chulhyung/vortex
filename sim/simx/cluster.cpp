@@ -12,7 +12,9 @@
 // limitations under the License.
 
 #include "cluster.h"
+#ifdef DTCU_ENABLE
 #include "dtcu_tma.h"
+#endif
 
 using namespace vortex;
 
@@ -61,7 +63,7 @@ Cluster::Cluster(const SimContext& ctx,
   });
 
   //Create Disaggregated Tensor Core
-  #ifdef EXT_TCU_ENABLE
+  #ifdef DTCU_ENABLE
     snprintf(sname, 100, "%s-dtcu", this->name().c_str());
     dtcu_ = Dtcu::Create(sname, this, arch, dcrs);
   #endif
@@ -75,7 +77,7 @@ Cluster::Cluster(const SimContext& ctx,
   }
 
   //Connect Disaggregated Tensor Core to L2 cache
-    #ifdef EXT_TCU_ENABLE
+    #ifdef DTCU_ENABLE
     const uint32_t dtcu_port = sockets_per_cluster * L1_MEM_PORTS; // last index in CoreReq/Rsp ports
     dtcu_->tma()->mem_req_out.bind(&l2cache_->core_req_in.at(dtcu_port));
     l2cache_->core_rsp_out.at(dtcu_port).bind(&dtcu_->tma()->mem_rsp_in);
@@ -98,7 +100,7 @@ void Cluster::reset() {
     barrier.reset();
   }
 
-  #ifdef EXT_TCU_ENABLE
+  #ifdef DTCU_ENABLE
     if (dtcu_) dtcu_->reset();
   #endif
 }
@@ -112,7 +114,7 @@ void Cluster::attach_ram(RAM* ram) {
     socket->attach_ram(ram);
   }
 
-  #ifdef EXT_TCU_ENABLE
+  #ifdef DTCU_ENABLE
     if (dtcu_) dtcu_->attach_ram(ram);
   #endif
 }

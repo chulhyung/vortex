@@ -622,6 +622,36 @@ Word Emulator::get_csr(uint32_t addr, uint32_t wid, uint32_t tid) {
         CSR_READ_64(VX_CSR_MPM_LMEM_BANK_ST, lmem_perf.bank_stalls);
         }
       } break;
+      case VX_DCR_MPM_CLASS_DTCU: {
+        // Cluster-level DTCU engine counters. Case is always present so a class-3
+        // query never aborts; values stay 0 when DTCU is not built/constructed.
+        // Plain locals so the Dtcu type is named only under DTCU_ENABLE.
+        uint64_t op_reqs = 0, out_reqs = 0, compute = 0, wait_tma = 0, mem_wait = 0, wait_buf = 0,
+                 buf_write = 0, addrgen = 0, store_wait = 0, store_drain = 0, opread = 0;
+      #ifdef DTCU_ENABLE
+        auto* dtcu = core_->socket()->cluster()->dtcu();
+        if (dtcu) {
+          auto dp = dtcu->perf_stats();
+          op_reqs = dp.op_reqs; out_reqs = dp.out_reqs; compute = dp.compute;
+          wait_tma = dp.wait_tma; mem_wait = dp.mem_wait; wait_buf = dp.wait_buf;
+          buf_write = dp.buf_write; addrgen = dp.addrgen; store_wait = dp.store_wait;
+          store_drain = dp.store_drain; opread = dp.opread;
+        }
+      #endif
+        switch (addr) {
+        CSR_READ_64(VX_CSR_MPM_DTCU_OP_REQS, op_reqs);
+        CSR_READ_64(VX_CSR_MPM_DTCU_OUT_REQS, out_reqs);
+        CSR_READ_64(VX_CSR_MPM_DTCU_COMPUTE, compute);
+        CSR_READ_64(VX_CSR_MPM_DTCU_WAIT_TMA, wait_tma);
+        CSR_READ_64(VX_CSR_MPM_DTCU_MEM_WAIT, mem_wait);
+        CSR_READ_64(VX_CSR_MPM_DTCU_WAIT_BUF, wait_buf);
+        CSR_READ_64(VX_CSR_MPM_DTCU_BUF_WRITE, buf_write);
+        CSR_READ_64(VX_CSR_MPM_DTCU_ADDRGEN, addrgen);
+        CSR_READ_64(VX_CSR_MPM_DTCU_STORE_WAIT, store_wait);
+        CSR_READ_64(VX_CSR_MPM_DTCU_STORE_DRAIN, store_drain);
+        CSR_READ_64(VX_CSR_MPM_DTCU_OPREAD, opread);
+        }
+      } break;
       default:
         std::cerr << "Error: invalid MPM CLASS: value=" << perf_class << std::endl;
         std::abort();

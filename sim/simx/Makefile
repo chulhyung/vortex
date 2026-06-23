@@ -37,9 +37,14 @@ ifneq ($(filter -DEXT_V_ENABLE, $(XCONFIGS)),)
 else
 	SRCS += $(SRC_DIR)/operands.cpp
 endif
-# Add TCU extension sources
+# Add in-core TCU (WMMA) extension sources
 ifneq ($(filter -DEXT_TCU_ENABLE, $(XCONFIGS)),)
   	SRCS += $(SRC_DIR)/tensor_unit.cpp
+endif
+
+# Add disaggregated DTCU sources. DTCU_ENABLE is a pure -D flag (not in VX_config.toml),
+# so it does not survive gen_config into XCONFIGS; filter the raw $(CONFIGS) instead.
+ifneq ($(filter -DDTCU_ENABLE, $(CONFIGS)),)
 	SRCS += $(SRC_DIR)/dtcu.cpp
 	SRCS += $(SRC_DIR)/dtcu_tma.cpp
 endif

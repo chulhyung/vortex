@@ -548,6 +548,30 @@ extern int vx_dump_perf(vx_device_h hdevice, FILE *stream) {
                  r + w, r, w, avg_lat, bst, calc_utility(r + w, bst));
     }
   } break;
+  case VX_DCR_MPM_CLASS_DTCU: {
+    // Cluster-level DTCU engine. Counters are global; read once via core 0.
+    // op_reqs/out_reqs are coalesced L2 cache-line counts; the rest are cycles.
+    uint64_t op_reqs = 0, out_reqs = 0, compute = 0, wait_tma = 0, mem_wait = 0, wait_buf = 0,
+             buf_write = 0, addrgen = 0, store_wait = 0, store_drain = 0, opread = 0;
+    CHECK_ERR(vx_mpm_query(hdevice, VX_CSR_MPM_DTCU_OP_REQS, 0, &op_reqs), { return err; });
+    CHECK_ERR(vx_mpm_query(hdevice, VX_CSR_MPM_DTCU_OUT_REQS, 0, &out_reqs), { return err; });
+    CHECK_ERR(vx_mpm_query(hdevice, VX_CSR_MPM_DTCU_COMPUTE, 0, &compute), { return err; });
+    CHECK_ERR(vx_mpm_query(hdevice, VX_CSR_MPM_DTCU_WAIT_TMA, 0, &wait_tma), { return err; });
+    CHECK_ERR(vx_mpm_query(hdevice, VX_CSR_MPM_DTCU_MEM_WAIT, 0, &mem_wait), { return err; });
+    CHECK_ERR(vx_mpm_query(hdevice, VX_CSR_MPM_DTCU_WAIT_BUF, 0, &wait_buf), { return err; });
+    CHECK_ERR(vx_mpm_query(hdevice, VX_CSR_MPM_DTCU_BUF_WRITE, 0, &buf_write), { return err; });
+    CHECK_ERR(vx_mpm_query(hdevice, VX_CSR_MPM_DTCU_ADDRGEN, 0, &addrgen), { return err; });
+    CHECK_ERR(vx_mpm_query(hdevice, VX_CSR_MPM_DTCU_STORE_WAIT, 0, &store_wait), { return err; });
+    CHECK_ERR(vx_mpm_query(hdevice, VX_CSR_MPM_DTCU_STORE_DRAIN, 0, &store_drain), { return err; });
+    CHECK_ERR(vx_mpm_query(hdevice, VX_CSR_MPM_DTCU_OPREAD, 0, &opread), { return err; });
+
+    perf_print(stream, "dtcu: mem_reqs=%" PRIu64 " (op=%" PRIu64 ", out=%" PRIu64 ") [L2 cache lines]",
+               op_reqs + out_reqs, op_reqs, out_reqs);
+    perf_print(stream, "dtcu: compute=%" PRIu64 ", wait_for_tma=%" PRIu64 ", mem_wait=%" PRIu64 ", wait_for_buf=%" PRIu64,
+               compute, wait_tma, mem_wait, wait_buf);
+    perf_print(stream, "dtcu: buf_write=%" PRIu64 ", addrgen=%" PRIu64 ", store_wait=%" PRIu64 ", store_drain=%" PRIu64 ", opread=%" PRIu64,
+               buf_write, addrgen, store_wait, store_drain, opread);
+  } break;
   default:
     fprintf(stream, "Error: invalid profiling class: %d)", perf_class);
     return -1;

@@ -64,6 +64,7 @@ VX_CSR_NUM_BARRIERS = 0xFC4
 VX_DCR_MPM_CLASS_BASE = 0
 VX_DCR_MPM_CLASS_CORE = 1
 VX_DCR_MPM_CLASS_MEM = 2
+VX_DCR_MPM_CLASS_DTCU = 3
 
 [csr_mpm_base]
 VX_CSR_MCYCLE = 0xB00
@@ -207,3 +208,29 @@ VX_CSR_MPM_LMEM_BANK_ST_H = 0xB9D
 # PERF: coalescer
 VX_CSR_MPM_COALESCER_MISS = 0xB1F  # coalescer misses
 VX_CSR_MPM_COALESCER_MISS_H = 0xB9F
+
+[csr_mpm_dtcu]
+# DTCU class (cluster-level engine). Counters reuse 0xB03+ multiplexed by MPM class 3.
+# op_reqs/out_reqs are coalesced L2 cache-line counts (same unit as core L2/memory reqs); rest are cycles.
+VX_CSR_MPM_DTCU_OP_REQS = 0xB03  # TMA operand (A/B/C) L2 cache-line requests
+VX_CSR_MPM_DTCU_OP_REQS_H = 0xB83
+VX_CSR_MPM_DTCU_OUT_REQS = 0xB04  # TMA output (D) L2 cache-line requests
+VX_CSR_MPM_DTCU_OUT_REQS_H = 0xB84
+VX_CSR_MPM_DTCU_COMPUTE = 0xB05  # MMA compute cycles
+VX_CSR_MPM_DTCU_COMPUTE_H = 0xB85
+VX_CSR_MPM_DTCU_WAIT_TMA = 0xB06  # compute stalled waiting for next operand tile
+VX_CSR_MPM_DTCU_WAIT_TMA_H = 0xB86
+VX_CSR_MPM_DTCU_MEM_WAIT = 0xB07  # prefetch waited on memory responses
+VX_CSR_MPM_DTCU_MEM_WAIT_H = 0xB87
+VX_CSR_MPM_DTCU_WAIT_BUF = 0xB08  # prefetch idle (no free buffer)
+VX_CSR_MPM_DTCU_WAIT_BUF_H = 0xB88
+VX_CSR_MPM_DTCU_BUF_WRITE = 0xB09  # buffer (SRAM) fill cycles
+VX_CSR_MPM_DTCU_BUF_WRITE_H = 0xB89
+VX_CSR_MPM_DTCU_ADDRGEN = 0xB0A  # AGU address-gen setup cycles
+VX_CSR_MPM_DTCU_ADDRGEN_H = 0xB8A
+VX_CSR_MPM_DTCU_STORE_WAIT = 0xB0B  # output store stalled cycles
+VX_CSR_MPM_DTCU_STORE_WAIT_H = 0xB8B
+VX_CSR_MPM_DTCU_STORE_DRAIN = 0xB0C  # final store drain (unhidden) cycles
+VX_CSR_MPM_DTCU_STORE_DRAIN_H = 0xB8C
+VX_CSR_MPM_DTCU_OPREAD = 0xB0D  # banked operand-SRAM read cycles
+VX_CSR_MPM_DTCU_OPREAD_H = 0xB8D

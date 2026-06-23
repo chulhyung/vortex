@@ -33,6 +33,9 @@ inline uint32_t elem_size_bytes(uint32_t fmt_id) {
     case vt::fp32::id:  return 4;
     case vt::fp16::id:  return 2;
     case vt::bf16::id:  return 2;
+    case vt::fp8::id:   return 1;
+    case vt::bf8::id:   return 1;
+    case vt::tf32::id:  return 4;
     case vt::int32::id: return 4;
     case vt::int8::id:  return 1;
     case vt::uint8::id: return 1;
@@ -214,9 +217,9 @@ void DtcuTma::load_operands_into(uint32_t buf_idx, uint32_t k_idx) {
       for (uint32_t m = 0; m < tile_m; ++m) {
         for (uint32_t n = 0; n < tile_n; ++n) {
           uint64_t addr = baseC + (uint64_t(m) * desc.ldmC + n) * 4;
-          float value = 0.0f;
-          ram_->read(&value, addr, 4);
-          accum[m * tile_n + n] = value;
+          // Raw 4-byte copy into the accumulator slot: preserves the bit pattern for
+          // both fp32 and int32 outputs (no float load/store that could canonicalize NaN).
+          ram_->read(&accum[m * tile_n + n], addr, 4);
         }
       }
     }
@@ -444,8 +447,8 @@ void DtcuTma::store_output() {
   for (uint32_t m = 0; m < tile_m; ++m) {
     for (uint32_t n = 0; n < tile_n; ++n) {
       uint64_t addr = tma_store_baseD_ + (uint64_t(m) * ldmD + n) * 4;
-      float value = accum[m * tile_n + n];
-      ram_->write(&value, addr, 4);
+      // Raw 4-byte copy from the accumulator slot: preserves fp32 / int32 bit pattern.
+      ram_->write(&accum[m * tile_n + n], addr, 4);
     }
   }
 }

@@ -173,6 +173,9 @@ static inline uint32_t elem_size_bytes(uint32_t fmt_id) {
     case vt::fp32::id:  return 4;
     case vt::fp16::id:  return 2;
     case vt::bf16::id:  return 2;
+    case vt::fp8::id:   return 1;
+    case vt::bf8::id:   return 1;
+    case vt::tf32::id:  return 4;
     case vt::int32::id: return 4;
     case vt::int8::id:  return 1;
     case vt::uint8::id: return 1;
@@ -185,8 +188,10 @@ static inline uint32_t elem_size_bytes(uint32_t fmt_id) {
 void Dtcu::init_tile_state_() {
   uint32_t in_sz = elem_size_bytes(desc_.fmt_s);
 
-  if (desc_.fmt_d != vt::fp32::id) {
-    std::cout << "[DTCU] Error: Only supports fp32 output/accumulation" << std::endl;
+  // Output/accumulation: fp32 (T1 sources) or int32 (T2 integer sources). Narrow
+  // outputs (fp16/bf16/...) need out_sz-aware C-load/store packing — not yet (T3).
+  if (desc_.fmt_d != vt::fp32::id && desc_.fmt_d != vt::int32::id) {
+    std::cout << "[DTCU] Error: Only supports fp32/int32 output/accumulation" << std::endl;
     std::abort();
   }
 
@@ -215,6 +220,9 @@ void Dtcu::init_tile_state_() {
     std::abort();
   }
 
+  // Partial tiles are not supported, by design: like the in-core WMMA unit (which only
+  // computes fixed-shape fragments), ragged edges are the caller's responsibility — the
+  // kernel/host pads M/N/K up to the tile size before issuing the descriptor.
   if ((desc_.M % tile_m_) != 0 || (desc_.N % tile_n_) != 0 || (desc_.K % tile_k_) != 0) {
     std::cout << "[DTCU] Error: Partial Tile not supported. M/N/K must be multiples of tile size. "
               << "M=" << desc_.M << ", N=" << desc_.N << ", K=" << desc_.K
@@ -312,13 +320,15 @@ uint32_t Dtcu::estimate_execute_cycles_() {
   // slower of (1) MAC throughput and (2) operand-read delivery from the banked SRAM,
   // plus (3) accumulator read-modify-write.
   //  (1) MAC: fixed DTCU_MACS_PER_CYCLE MAC/cycle over tile_m*tile_n*tile_k MACs.
-  //  (2) operand read: operand_read_cycles_() — banked, bank-conflict-sensitive (M2).
+  //  (2) operand read: operand_read_cycles_() bank-conflict throughput (M2) PLUS
+  //      DTCU_BUF_LATENCY base access latency (L1 dcache read-latency model);
+  //      operand read and fill hit the same scratchpad SRAM, so they share it.
   //  (3) accumulator R/W: 2*tile_m*tile_n words at the accumulator SRAM rate
   //      (DTCU_ACC_BANKS) -- a separate SRAM from the operand scratchpad, no conflict.
   // The functional execute_mma() stays the value oracle; this only models timing.
   const uint64_t tile_macs    = uint64_t(tile_m_) * tile_n_ * tile_k_;
   const uint64_t mac_cycles   = (tile_macs + DTCU_MACS_PER_CYCLE - 1) / DTCU_MACS_PER_CYCLE;
-  const uint32_t read_cycles  = operand_read_cycles_();
+  const uint32_t read_cycles  = operand_read_cycles_() + DTCU_BUF_LATENCY;
   const uint64_t accum_words  = 2ull * tile_m_ * tile_n_; // read partial + write updated
   const uint64_t accum_cycles = (accum_words + DTCU_ACC_BANKS - 1) / DTCU_ACC_BANKS + DTCU_ACC_LATENCY;
   dtcu_operand_read_cycles_ += read_cycles; // report (swizzle on/off comparison)

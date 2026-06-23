@@ -1131,6 +1131,7 @@ void Emulator::decode(uint32_t code, uint32_t wid, uint64_t uuid) {
           }
         }
       } break;
+    #ifdef DTCU_ENABLE
       case 1: { // DTENSOR_START (Disaggregated Tensor Core)
         auto instr = std::allocate_shared<Instr>(instr_pool_, uuid, FUType::DTCU_Control);
         instr->setOpType(TcuType::DTENSOR_START);
@@ -1145,6 +1146,7 @@ void Emulator::decode(uint32_t code, uint32_t wid, uint64_t uuid) {
         instr->setDestReg(rd, RegType::Integer); // rd gets done flag
         ibuffer.push_back(instr);
       } break;
+    #endif // DTCU_ENABLE
       default:
         std::abort();
       }

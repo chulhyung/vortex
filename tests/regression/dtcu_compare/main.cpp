@@ -21,6 +21,11 @@
 #define FLOAT_ULP 6
 #define MAX_ERRORS 100
 
+// GEMM size = SIZE_MULT * native tile. Override (e.g. -DSIZE_MULT=2) for a quick smoke run.
+#ifndef SIZE_MULT
+#define SIZE_MULT 16
+#endif
+
 #define RT_CHECK(_expr)                                      \
   do {                                                       \
     int _ret = _expr;                                        \
@@ -71,6 +76,35 @@ struct Convert<vt::bf16> {
     uint32_t bits = rv_btof_s(x, 0, nullptr);
     return bit_cast<float>(bits);
   }
+};
+
+// fp8 e4m3 input (T1): byte-sized source, fp32 output/accumulation.
+template <>
+struct Convert<vt::fp8> {
+  using dtype = uint8_t;
+  static inline dtype from_float(float f) {
+    return rv_ftoe4m3_s(bit_cast<uint32_t>(f), 0, nullptr);
+  }
+  static inline float to_float(dtype x) {
+    uint32_t bits = rv_e4m3tof_s(x, 0, nullptr);
+    return bit_cast<float>(bits);
+  }
+};
+
+// int8 input / int32 output (T2): integer GEMM. Values stay small (< 2^24) so the
+// float reference + ULP compare is exact for these cases.
+template <>
+struct Convert<vt::int8> {
+  using dtype = int8_t;
+  static inline dtype from_float(float f) { return (int8_t)std::lrint(f); }
+  static inline float to_float(dtype x) { return (float)x; }
+};
+
+template <>
+struct Convert<vt::int32> {
+  using dtype = int32_t;
+  static inline dtype from_float(float f) { return (int32_t)std::lrint(f); }
+  static inline float to_float(dtype x) { return (float)x; }
 };
 
 // Refer to kernel/include/vx_tensor.h::dtensor_desc_t
@@ -138,10 +172,10 @@ int main(int argc, char** argv) {
   // For DTCU
   const uint32_t dtcu_tileM = 64;
   const uint32_t dtcu_tileN = 32; // start with N=32
-  const uint32_t dtcu_tileK = (sizeof(itype_t) == 2) ? 16 : 8;
+  const uint32_t dtcu_tileK = 8 * (4 / sizeof(itype_t)); // 1B->32, 2B->16, 4B->8 (matches DTCU tile_k_)
 
   // Total GEMM size = size_mult * native tile (sweep size_mult: 1,2,4,8,16)
-  const uint32_t size_mult = 16; // 16 -> 1024x512x256
+  const uint32_t size_mult = SIZE_MULT; // default 16 -> 1024x512x256
   const uint32_t M = size_mult * dtcu_tileM;
   const uint32_t N = size_mult * dtcu_tileN;
   const uint32_t K = size_mult * dtcu_tileK;

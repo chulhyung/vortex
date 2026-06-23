@@ -479,6 +479,10 @@ void TcuUnit::tick() {
 	// use tensor_unit
 }
 
+#endif // EXT_TCU_ENABLE
+
+#ifdef DTCU_ENABLE
+
 DtcuControlUnit::DtcuControlUnit(const SimContext& ctx, const char* name, Core* core)
   : FuncUnit(ctx, name, core)
 {}
@@ -519,4 +523,4 @@ void DtcuControlUnit::tick() {
 		input.pop();
 	}
 }
-#endif
+#endif // DTCU_ENABLE
