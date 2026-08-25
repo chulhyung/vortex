@@ -1227,6 +1227,14 @@ dtcu()
     CONFIGS="-DVX_CFG_EXT_DTCU_ENABLE" ./ci/blackbox.sh --driver=simx --app=dtcu_basic
     CONFIGS="-DVX_CFG_EXT_TCU_ENABLE -DVX_CFG_EXT_DTCU_ENABLE" ./ci/blackbox.sh --driver=simx --app=dtcu_compare
 
+    # Benchmark ports (in-core TCU vs DTCU, NT=8). Robotics GEMMs from ../bench and fused
+    # matmul+SIMT-epilogue kernels. Fused tests also measure the DTCU->SIMT hand-off overhead.
+    for app in dtcu_pi0_i_k1 dtcu_pi0_t_fwd_k1 dtcu_act_t_fwd_k1 \
+               dtcu_fused_gemm_add_relu dtcu_fused_matmul_softmax dtcu_fused_gemm_layernorm; do
+        CONFIGS="-DVX_CFG_NUM_THREADS=8 -DVX_CFG_EXT_TCU_ENABLE -DVX_CFG_EXT_DTCU_ENABLE" \
+            ./ci/blackbox.sh --driver=simx --app=$app --threads=8
+    done
+
     echo "dtcu tests done!"
 }
 

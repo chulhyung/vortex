@@ -25,14 +25,15 @@
 // All are #ifndef-guarded so they can be overridden at build time via -D... .
 //
 // DTCU_MACS_PER_CYCLE: sustained multiply-accumulates per cycle of the DTCU
-//   matrix array. Default 16 == one in-core TCU's raw throughput (NT=4), so the
-//   DTCU's modeled advantage comes only from removing SIMT pipeline overhead
-//   and NOT from also assuming a wider array (no double counting). Raise this to
-//   model a physically wider unit.
+//   matrix array. Default 32 == one in-core TCU's raw throughput at NT=8
+//   (NT=4 gives 16; MACs/cycle scale with lanes), so the DTCU's modeled advantage
+//   comes only from removing SIMT pipeline overhead and NOT from also assuming a
+//   wider array (no double counting). Raise this to model a physically wider unit;
+//   pin -DDTCU_MACS_PER_CYCLE=16 to calibrate against an NT=4 in-core TCU.
 // DTCU_COMPUTE_LATENCY: pipeline fill latency added per native tile (cycles).
 // ---------------------------------------------------------------------------
 #ifndef DTCU_MACS_PER_CYCLE
-#define DTCU_MACS_PER_CYCLE 16 // In-core TCU also has 16 MACs/cycle (NT=4), so this models only SIMT overhead reduction, not a wider array.
+#define DTCU_MACS_PER_CYCLE 32 // In-core TCU has 32 MACs/cycle at NT=8, so this models only SIMT overhead reduction, not a wider array.
 #endif
 #ifndef DTCU_COMPUTE_LATENCY
 #define DTCU_COMPUTE_LATENCY 6
